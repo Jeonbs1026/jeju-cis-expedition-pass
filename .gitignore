@@ -1,0 +1,13 @@
+# 수정 전 백업 (각 1.5MB, 재현은 빌드/ 스크립트로)
+빌드/*.html
+*.bak
+# Word 임시 파일
+~$*
+# 배포용 사본(JEJU_CIS_최종.html과 같은 파일)과 wrangler 캐시
+배포/public/
+배포/.wrangler/
+.wrangler/
+node_modules/
+.DS_Store
+# PDF는 Word에서 최종 내보낸 뒤 추가
+*.pdf

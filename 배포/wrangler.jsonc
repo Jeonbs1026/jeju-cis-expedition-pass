@@ -1,0 +1,13 @@
+// JEJU CIS 웹 시연물 배포 설정 (Cloudflare Workers: 정적 앱 + /api 서버 + D1)
+// 다시 배포: 이 폴더에서 npx wrangler deploy  → https://jeju-cis.jeju-cis.workers.dev
+// 테이블 만들기(처음 한 번): npx wrangler d1 execute jeju-cis-db --remote --file schema.sql
+// 전문가 키: npx wrangler secret put EXPERT_KEY
+{
+  "name": "jeju-cis",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-23",
+  "assets": { "directory": "public", "binding": "ASSETS", "run_worker_first": ["/", "/index.html"] },  // 앱 HTML은 Worker가 ETag를 붙여 응답
+  "d1_databases": [
+    { "binding": "jeju_cis_db", "database_name": "jeju-cis-db", "database_id": "08861b88-d940-47b8-8881-040dd7df47c9" }
+  ]
+}

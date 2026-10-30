@@ -1,0 +1,23 @@
+// 서버 API 추가 검사: 목록에 사진 미포함, 북마크(좋아요) 집계, 오동정 제보 처리
+const B=process.argv[2]||'https://jeju-cis.jeju-cis.workers.dev',K=process.argv[3];
+const j=async(m,p,body,h={})=>{const r=await fetch(B+p,{method:m,headers:{'Content-Type':'application/json',...h},body:body&&JSON.stringify(body)});return [r.status,await r.json().catch(()=>null)]};
+const ok=(c,m)=>{console.log(c?'PASS':'FAIL',m);if(!c)process.exitCode=1};
+const A='test-device-aaaa',O='test-device-bbbb',X={'X-Expert-Key':K};
+const photo='data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==';
+let [s,d]=await j('POST','/api/records',{device:A,nickname:'테스터',record:{taxon:'bird',name:'청둥오리',nameLevel:'species',status:'recorded',lat:33.45,lon:126.56,region:'제주시 아라동',at:'2026-10-30T10:00',note:'',photo}});const id=d.record.srv;
+[s,d]=await j('GET','/api/records?device='+A);ok(!('photo' in d.records[0])&&JSON.stringify(d).length<5000,'목록에 사진 없음');
+[s]=await j('POST',`/api/records/${id}/bookmark`,{device:O,on:true});ok(s===403,'공개 전 남의 북마크 불가');
+await j('PATCH',`/api/records/${id}`,{public:1},X);
+[s]=await j('POST',`/api/records/${id}/bookmark`,{device:O,on:true});ok(s===200,'공개 후 북마크');
+await j('POST',`/api/records/${id}/bookmark`,{device:O,on:true});
+[,d]=await j('GET','/api/records?device='+A);ok(d.records.find(r=>r.srv===id).bookmarks===1,'작성자: 받은 북마크 1 (중복 무시)');
+[,d]=await j('GET','/api/records?device='+O);const r=d.records.find(r=>r.srv===id);ok(r.bookmarked===true&&r.bookmarks===0,'북마크한 기기: 내 북마크 표시, 남의 수 0');
+await j('POST',`/api/records/${id}/bookmark`,{device:O,on:false});[,d]=await j('GET','/api/records?device='+A);ok(d.records.find(r=>r.srv===id).bookmarks===0,'북마크 해제');
+[s,d]=await j('POST','/api/reports',{device:O,nickname:'제보자',ref:'seed:5',name:'직박구리',note:'부리 모양이 달라요'});ok(s===201,'제보 등록');const rid=d.srv;
+[s]=await j('POST','/api/reports',{device:O,nickname:'제보자',ref:'bad',name:'x',note:'y'});ok(s===400,'잘못된 제보 거부');
+[,d]=await j('GET','/api/reports?device='+A);ok(!d.reports.some(x=>x.srv===rid),'남의 제보 안 보임');
+[s]=await j('PATCH',`/api/reports/${rid}`,{status:'accepted',reply:'반영했어요'});ok(s===403,'키 없이 제보 처리 불가');
+[s]=await j('PATCH',`/api/reports/${rid}`,{status:'accepted',reply:'반영했어요'},X);ok(s===200,'전문가 제보 처리');
+[,d]=await j('GET','/api/reports?device='+O);const rp=d.reports.find(x=>x.srv===rid);ok(rp.status==='accepted'&&rp.reply==='반영했어요','제보자: 처리 결과 확인');
+await fetch(`${B}/api/records/${id}`,{method:'DELETE',headers:X});
+console.log('정리: 제보는 DB에서 직접 삭제');

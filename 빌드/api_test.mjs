@@ -1,0 +1,23 @@
+// 서버 API 검사: 검수 전 비공개, 승인 후 공개, 사진·좌표 접근 제한, 권한 검사
+const B = process.argv[2] || 'https://jeju-cis.jeju-cis.workers.dev', K = process.argv[3];
+const j = async (m, p, body, h = {}) => { const r = await fetch(B + p, { method: m, headers: { 'Content-Type': 'application/json', ...h }, body: body && JSON.stringify(body) }); return [r.status, await r.json().catch(() => null)]; };
+const ok = (c, msg) => { console.log(c ? 'PASS' : 'FAIL', msg); if (!c) process.exitCode = 1; };
+const A = 'test-device-aaaa', O = 'test-device-bbbb';
+const photo = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==';
+const rec = { taxon: 'bird', name: '이름모름', nameLevel: 'unknown', status: 'requested', lat: 33.45678, lon: 126.56789, region: '제주시 아라동', at: '2026-10-30T10:00', note: '테스트', photo };
+let [s, d] = await j('GET', '/api/health'); ok(s === 200 && d.ok, 'health');
+[s, d] = await j('POST', '/api/records', { device: A, nickname: '테스터', record: rec }); ok(s === 201, 'A 등록 ' + s); const id = d?.record?.srv;
+[s, d] = await j('POST', '/api/records', { device: A, nickname: '테스터', record: { ...rec, lat: 37.5 } }); ok(s === 400, '제주 밖 좌표 거부');
+[s, d] = await j('GET', '/api/records?device=' + O); ok(!d.records.some(r => r.srv === id), '승인 전: 다른 기기에 안 보임');
+[s, d] = await j('GET', '/api/records?device=' + A); const mine = d.records.find(r => r.srv === id); ok(mine && mine.lat === 33.45678, '작성 기기: 보이고 정확 좌표');
+let r = await fetch(`${B}/api/photo/${id}?device=${O}`); ok(r.status === 404, '승인 전 사진: 다른 기기 차단');
+r = await fetch(`${B}/api/photo/${id}?device=${A}`); ok(r.status === 200 && r.headers.get('content-type') === 'image/jpeg', '승인 전 사진: 작성 기기 허용');
+[s, d] = await j('PATCH', `/api/records/${id}`, { public: 1 }); ok(s === 403, '키 없이 승인 불가');
+[s, d] = await j('PATCH', `/api/records/${id}`, { status: 'unable' }, { 'X-Expert-Key': K }); ok(s === 400, '판별 불가에 의견 필수');
+[s, d] = await j('PATCH', `/api/records/${id}`, { public: 1, status: 'done', name: '청둥오리', scientific: 'Anas platyrhynchos', nameLevel: 'species', expertNote: '확인' }, { 'X-Expert-Key': K }); ok(s === 200 && d.record.status === 'done', '전문가 승인·동정');
+[s, d] = await j('GET', '/api/records?device=' + O); const pub = d.records.find(r => r.srv === id); ok(pub && pub.lat === 33.46 && pub.lon === 126.57, '승인 후: 다른 기기에 보이고 좌표는 낮춤');
+r = await fetch(`${B}/api/photo/${id}?device=${O}`); ok(r.status === 200, '승인 후 사진 공개');
+[s] = await j('POST', `/api/records/${id}/view`, { device: O }); [, d] = await j('GET', '/api/records?device=' + O); ok(d.records.find(r => r.srv === id).views === 1, '조회수 +1');
+[s] = await j('PUT', `/api/records/${id}`, { device: A, record: rec }); ok(s === 409, '동정 완료 후 수정 불가');
+r = await fetch(`${B}/api/records/${id}?device=${A}`, { method: 'DELETE' }); ok(r.status === 403, '동정 완료 후 작성자 삭제 불가');
+r = await fetch(`${B}/api/records/${id}`, { method: 'DELETE', headers: { 'X-Expert-Key': K } }); ok(r.status === 200, '전문가 삭제(정리)');
