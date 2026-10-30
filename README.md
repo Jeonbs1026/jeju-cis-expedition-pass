@@ -12,6 +12,8 @@ JEJU CIS 앱을 '기록하고 끝나는 앱'에서 '성장하는 탐험 앱'으�
 |---|---|
 | `JEJU_CIS_최종.html` | 웹 시연물 전체 (HTML 파일 하나. 브라우저로 열면 동작) |
 | `JEJU_CIS_최종발표.html` | 발표 덱 13장 (최종 앱 내장, 로컬에서 열어 사용) |
+| `JEJU_CIS_시연영상.mp4` | 제출용 시연 영상 (2분 32초, 1920×1080): 문제 정의 · 구현 내용 · 검증 결과 · 확장 방안 |
+| `JEJU_CIS_시연영상.html` | 시연 영상 원본 (실제 앱을 자동으로 조작하는 HTML. 브라우저로 열어 재생) |
 | `발표대본.md` | 장별 발표 대본과 예상 질문 |
 | `발표당일_체크리스트.md` | 실기기 확인, 리허설, 당일 준비, 문제 대응 |
 | `JEJU_CIS_최종보고서.docx` | 최종 발표 보고서 겸 3쪽 설명서 |
@@ -52,6 +54,9 @@ npx wrangler deploy
 | `node 빌드/app_regress.mjs <주소> [전문가키]` | 기존·개선 모드 60개 화면 |
 | `node 빌드/deck_check.mjs <덱 절대경로>` | 발표 덱 13장과 내장 앱 |
 | `node 빌드/perf_slow.mjs [주소]` | 저사양 조건 로딩 시간 |
+| `node 빌드/video_check.mjs <영상.html 절대경로> <폴더>` | 시연 영상을 끝까지 재생하며 점검 |
+
+시연 영상 다시 만들기: `python3 빌드/video_build.py JEJU_CIS_최종발표.html JEJU_CIS_최종.html JEJU_CIS_시연영상.html` → `node 빌드/video_record.mjs <영상.html 절대경로> <출력.mp4> <ffmpeg 경로>` (ffmpeg는 `npm i ffmpeg-static`으로 받을 수 있음)
 
 검사는 실제 서버에 테스트 기록을 만들고 끝에서 지웁니다. `e2e_round5.mjs`는 D1에 직접 SQL을 실행하므로 `배포/` 폴더에서 wrangler 로그인이 되어 있어야 합니다.
 
