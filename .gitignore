@@ -11,3 +11,4 @@ node_modules/
 .DS_Store
 # PDF는 Word에서 최종 내보낸 뒤 추가
 *.pdf
+!빌드/video_template.html
