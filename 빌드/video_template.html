@@ -130,11 +130,20 @@ const REC=new URLSearchParams(location.search).has('record');if(REC)document.doc
 function fit(){stage.style.setProperty('--s',Math.min(innerWidth/1600,innerHeight/900))}addEventListener('resize',fit);fit();
 document.querySelectorAll('.scene').forEach(s=>s.querySelectorAll('[data-a]').forEach((e,i)=>e.style.setProperty('--i',i)));
 let paused=false,t0=0,pausedAt=0,pausedTotal=0,running=false;
+const EV=[];let AC=null;window.__events=EV;
+function tone(f0,f1,start,dur,gain,type='sine'){const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime+start;o.type=type;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+dur);g.gain.setValueAtTime(gain,t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g).connect(AC.destination);o.start(t);o.stop(t+dur+.02)}
+function whoosh(){const n=AC.sampleRate*.45,b=AC.createBuffer(1,n,AC.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.sin(Math.PI*i/n);const src=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain(),t=AC.currentTime;src.buffer=b;f.type='bandpass';f.Q.value=1.2;f.frequency.setValueAtTime(300,t);f.frequency.exponentialRampToValueAtTime(2200,t+.45);g.gain.value=.16;src.connect(f).connect(g).connect(AC.destination);src.start(t)}
+// 효과음 종류: tap(누름) · toggle(기존→개선) · scene(장면 전환) · chime(시작·알림·마무리)
+function sfx(type){EV.push({type,at:Date.now()});if(!AC||REC)return;
+ if(type==='tap')tone(1150,650,0,.07,.22);
+ else if(type==='toggle'){tone(660,660,0,.09,.14,'triangle');tone(990,990,.09,.12,.14,'triangle')}
+ else if(type==='scene')whoosh();
+ else if(type==='chime'){tone(1047,1047,0,.9,.12);tone(1319,1319,.12,.9,.10)}}
 const now=()=>performance.now()-t0-pausedTotal-(paused?performance.now()-pausedAt:0);
 async function wait(ms){const end=now()+ms;while(now()<end){await new Promise(r=>setTimeout(r,40))}}
 const W=()=>frame.contentWindow,D=()=>frame.contentDocument;
 // 장면 전환·자막·장 표시
-function scene(id,chapter){document.querySelectorAll('.scene').forEach(s=>s.classList.toggle('on',s.dataset.id===id));$('#chapter').textContent=chapter||'';$('#cap span').classList.remove('on')} /* 장면이 바뀌면 이전 자막을 바로 숨김 */
+function scene(id,chapter){if(id!=='title')sfx(id==='end'?'chime':'scene');document.querySelectorAll('.scene').forEach(s=>s.classList.toggle('on',s.dataset.id===id));$('#chapter').textContent=chapter||'';$('#cap span').classList.remove('on')} /* 장면이 바뀌면 이전 자막을 바로 숨김 */
 function phone(on){$('#phone').classList.toggle('on',on);if(!on)$('#finger').classList.remove('on')}
 async function cap(text,ms=0){const s=$('#cap span');s.classList.remove('on');await wait(250);s.textContent=text;if(text)s.classList.add('on');if(ms)await wait(ms)}
 // 앱 안 요소를 손가락으로 누름 (앱 좌표 → 무대 좌표)
@@ -142,16 +151,16 @@ function point(el,dy){const r=el.getBoundingClientRect(),k=.916,ph=$('#phone').g
  return [ (ph.left-st.left)/s+12+(r.left+r.width/2)*k, (ph.top-st.top)/s+12+(dy!=null?r.top+dy:r.top+r.height/2)*k ]}
 async function tap(sel,opt={}){const el=typeof sel==='string'?D().querySelector(sel):sel;if(!el){console.warn('없음',sel);return}
  const [x,y]=point(el,opt.dy),f=$('#finger'),rp=$('#ripple');f.classList.add('on');f.style.transform=`translate3d(${x}px,${y}px,0)`;await wait(800);
- f.classList.add('press');rp.style.transform=`translate3d(${x}px,${y}px,0)`;rp.classList.remove('go');void rp.offsetWidth;rp.classList.add('go');await wait(180);
+ f.classList.add('press');sfx('tap');rp.style.transform=`translate3d(${x}px,${y}px,0)`;rp.classList.remove('go');void rp.offsetWidth;rp.classList.add('go');await wait(180);
  if(opt.raw)el.dispatchEvent(new MouseEvent('click',{bubbles:true}));else el.click();f.classList.remove('press');await wait(opt.after??700)}
 const byText=(sel,text)=>[...D().querySelectorAll(sel)].find(e=>e.textContent.trim().includes(text));
 async function show(route,legacy,ms=900){W().CIS.show(route,legacy);await wait(ms)}
-const toNew=()=>tap('#mode-bar button:last-child',{after:1100});
+const toNew=async()=>{const p=tap('#mode-bar button:last-child',{after:1100});await wait(1000);sfx('toggle');await p};
 async function scroll(y,ms=1200){W().scrollTo({top:y,behavior:'smooth'});await wait(ms)}
 
 async function run(){
  // 0:00 표지
- scene('title');await wait(6500);
+ scene('title');sfx('chime');await wait(6500);
  // 문제 정의
  scene('problem','문제 정의');await cap('2026년 10월 7일 기존 앱을 직접 써 보며 확인한 문제입니다.',7500);await cap('기록을 남긴 뒤의 과정이 보이지 않아, 계속 참여하기 어려웠습니다.',7000);await cap('');
  // 구현 내용: 비교 소개
@@ -183,7 +192,7 @@ async function run(){
  scene('report','구현 내용 · 신규 기능');await show('my',false,1000);await cap('마이페이지의 탐험 리포트 카드를 누르면',0);await tap('.report-card',{after:1300});
  await cap('내 기록의 통계와 다음 탐사 지역 추천을 봅니다.',0);await scroll(700,1800);await wait(1600);
  // 검수 후 공개
- scene('review','구현 내용 · 신규 기능');await show('notifications',false,900);await cap('올린 기록은 전문가가 승인해야 공개되고, 동정 결과는 알림으로 돌아옵니다.',3600);await cap('발표 현장에서는 청중이 올린 기록으로 이 과정을 직접 시연합니다.',3400);
+ scene('review','구현 내용 · 신규 기능');await show('notifications',false,900);sfx('chime');await cap('올린 기록은 전문가가 승인해야 공개되고, 동정 결과는 알림으로 돌아옵니다.',3600);await cap('발표 현장에서는 청중이 올린 기록으로 이 과정을 직접 시연합니다.',3400);
  // 검증 결과
  phone(false);await cap('');scene('verify','검증 결과');await wait(1200);await cap('실제 배포 주소에서 자동 검사를 반복해 동작을 확인했습니다.',6000);await cap('동시 접속에 대비해 로딩과 서버 읽기량도 줄였습니다.',6000);
  // 확장 방안
@@ -193,7 +202,7 @@ async function run(){
 }
 function tick(){if(!running)return;const s=Math.max(0,now()/1000);$('#time').textContent=`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;$('#bar').style.width=Math.min(100,s/TOTAL*100)+'%';requestAnimationFrame(tick)}
 const TOTAL=170;
-async function start(){if(running)return;running=true;$('#start').remove?.();t0=performance.now();pausedTotal=0;tick();await run();running=false;window.__done=true}
+async function start(){if(running)return;running=true;if(!REC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch{}}$('#start').remove?.();t0=performance.now();pausedTotal=0;tick();await run();running=false;window.__done=true}
 // 앱 불러오기 (같은 문서 출처로 열어 직접 조작)
 const bin=atob($('#appB64').textContent.trim());frame.srcdoc=new TextDecoder().decode(Uint8Array.from(bin,c=>c.charCodeAt(0)));
 frame.addEventListener('load',()=>{window.__ready=true;if(REC)start()});

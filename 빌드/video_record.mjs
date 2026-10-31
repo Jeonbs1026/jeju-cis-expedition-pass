@@ -1,6 +1,6 @@
 // 시연 영상 HTML을 녹화해 MP4로 저장 (헤드리스 Chrome 화면 캡처 + ffmpeg)
 // 사용: node video_record.mjs <영상.html 절대경로> <출력.mp4> <ffmpeg 경로>
-import { spawn, execFileSync } from 'node:child_process';import { mkdtempSync, writeFileSync } from 'node:fs';
+import { spawn, execFileSync } from 'node:child_process';import { mkdtempSync, writeFileSync } from 'node:fs';import { fileURLToPath } from 'node:url';
 const [html,outMp4,FFMPEG]=process.argv.slice(2);const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const dir=mkdtempSync('/private/tmp/claude-501/cis-rec-');
 const p=spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',['--headless=new','--remote-debugging-port=9373',`--user-data-dir=${dir}/profile`,'--hide-scrollbars','about:blank']);
@@ -16,10 +16,14 @@ await send('Page.navigate',{url:'file://'+html+'?record'});
 for(let i=0;i<200&&!(await ev('!!window.__ready'));i++)await sleep(100);
 await send('Page.startScreencast',{format:'jpeg',quality:92,maxWidth:1920,maxHeight:1080,everyNthFrame:1});
 const t0=Date.now();while(!(await ev('!!window.__done'))&&Date.now()-t0<240000)await sleep(500);
-await sleep(800);await send('Page.stopScreencast');ws.close();p.kill();
+await sleep(800);await send('Page.stopScreencast');const events=JSON.parse(await ev('JSON.stringify(window.__events||[])'));ws.close();p.kill();
 // 프레임마다 화면에 머문 시간으로 이어 붙이기
 let list='';for(let i=0;i<frames.length;i++){const d=i<frames.length-1?Math.max(0.001,frames[i+1].t-frames[i].t):0.5;list+=`file '${frames[i].f}'\nduration ${d.toFixed(4)}\n`}
 list+=`file '${frames.at(-1).f}'\n`;writeFileSync(`${dir}/list.txt`,list);
 const total=frames.at(-1).t-frames[0].t;console.log('프레임',frames.length,'장 · 길이',total.toFixed(1),'초');
-execFileSync(FFMPEG,['-y','-loglevel','error','-f','concat','-safe','0','-i',`${dir}/list.txt`,'-vf','fps=30,scale=1920:1080:flags=lanczos,format=yuv420p','-c:v','libx264','-preset','medium','-crf','20','-movflags','+faststart',outMp4],{stdio:'inherit'});
+execFileSync(FFMPEG,['-y','-loglevel','error','-f','concat','-safe','0','-i',`${dir}/list.txt`,'-vf','fps=30,scale=1920:1080:flags=lanczos,format=yuv420p','-c:v','libx264','-preset','medium','-crf','20',`${dir}/video.mp4`],{stdio:'inherit'});
+// 효과음: 페이지가 기록한 시각(Date.now)을 화면 캡처 시각(초)에 맞춰 영상 시간으로 바꿈
+writeFileSync(`${dir}/events.json`,JSON.stringify(events.map(e=>({type:e.type,t:e.at/1000-frames[0].t}))));
+execFileSync('python3',[fileURLToPath(new URL('./sfx_mix.py',import.meta.url)),`${dir}/events.json`,String(total+0.5),`${dir}/sfx.wav`],{stdio:'inherit'});
+execFileSync(FFMPEG,['-y','-loglevel','error','-i',`${dir}/video.mp4`,'-i',`${dir}/sfx.wav`,'-map','0:v','-map','1:a','-c:v','copy','-c:a','aac','-b:a','160k','-shortest','-movflags','+faststart',outMp4],{stdio:'inherit'});
 console.log('저장',outMp4);process.exit(0);
