@@ -5,7 +5,7 @@ s = open(deck, encoding='utf-8').read(); t = open(md, encoding='utf-8').read()
 parts = re.findall(r'^## (\d+)\. [^\n]*\n(.*?)(?=^## |^---)', t, re.S | re.M)
 notes = {int(n): re.sub(r'\*\*', '', body).strip() for n, body in parts}
 slides = list(re.finditer(r'<section class="slide[^"]*"[^>]*?data-note="[^"]*"', s))
-assert len(slides) == len(notes) == 13, (len(slides), len(notes))
+assert len(slides) == len(notes) == 14, (len(slides), len(notes))
 out, pos = [], 0
 for i, m in enumerate(slides, 1):
     tag = m.group(0)

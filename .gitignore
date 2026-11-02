@@ -12,3 +12,5 @@ node_modules/
 # PDF는 Word에서 최종 내보낸 뒤 추가
 *.pdf
 !빌드/video_template.html
+# 발표 대본은 개인 보관
+발표대본.md
