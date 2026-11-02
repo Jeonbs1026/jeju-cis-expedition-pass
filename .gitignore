@@ -14,3 +14,5 @@ node_modules/
 !빌드/video_template.html
 # 발표 대본은 개인 보관
 발표대본.md
+# 발표 덱은 대본(발표 메모)을 담고 있어 개인 보관
+JEJU_CIS_최종발표.html
