@@ -13,6 +13,7 @@ JEJU CIS 앱을 '기록하고 끝나는 앱'에서 '성장하는 탐험 앱'으�
 | `JEJU_CIS_최종.html` | 웹 시연물 전체 (HTML 파일 하나. 브라우저로 열면 동작) |
 | `JEJU_CIS_시연영상.mp4` | 제출용 시연 영상 (2분 31초, 1920×1080, 자막 + 합성 효과음): 문제 정의 · 구현 내용 · 검증 결과 · 확장 방안 |
 | `JEJU_CIS_시연영상.html` | 시연 영상 원본 (실제 앱을 자동으로 조작하는 HTML. 브라우저로 열어 재생) |
+| `리뉴얼앱_웹.html` | 리뉴얼 안드로이드 앱(`10_안드로이드앱`)의 화면을 한 파일로 묶은 웹 버전. 브라우저로 열면 동작하며, 발표 덱 16장에 들어 있음 (`python3 빌드/renew_web.py <assets> <출력>`) |
 | `발표당일_체크리스트.md` | 실기기 확인, 리허설, 당일 준비, 문제 대응 |
 | `JEJU_CIS_최종보고서.docx` | 최종 발표 보고서 겸 3쪽 설명서 |
 | `배포/` | 시연용 서버 (Cloudflare Workers + D1): `src/index.js`, `schema.sql`, `wrangler.jsonc` |
@@ -50,7 +51,7 @@ npx wrangler deploy
 | `node 빌드/e2e_round3.mjs` | 내 주변 표시, 안내 문구 |
 | `node 빌드/e2e_round5.mjs <전문가키>` | 서버에서 삭제된 기록 처리, 입력 거르기(XSS) |
 | `node 빌드/app_regress.mjs <주소> [전문가키]` | 기존·개선 모드 60개 화면 |
-| `node 빌드/deck_check.mjs <덱 절대경로>` | 발표 덱 13장과 내장 앱 |
+| `node 빌드/deck_check.mjs <덱 절대경로>` | 발표 덱 18장과 내장 앱 |
 | `node 빌드/perf_slow.mjs [주소]` | 저사양 조건 로딩 시간 |
 | `node 빌드/video_check.mjs <영상.html 절대경로> <폴더>` | 시연 영상을 끝까지 재생하며 점검 |
 
